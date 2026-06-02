@@ -755,15 +755,18 @@ export function Dashboard({ session }: DashboardProps) {
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                      ).map((vUser: any, vIdx) => {
-                      // Pega o seu ID atual para comparação (ajuste para a sua variável de id local se necessário, ex: user?.id)
-                      const myId = globalOnlineUsers.find((u: any) => u.username === 'jeidson148')?.id;
+                      const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
+                      const displayName = matchingUser?.username || vUser.username || "Usuário";
                       
-                      // Se for o segundo usuário clonado na lista, pega o primeiro cara online que NÃO seja você
-                      const remoteUser = globalOnlineUsers.find((u: any) => u.username !== 'jeidson148');
-                      const displayName = (vIdx > 0 && remoteUser) ? remoteUser.username : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
+                      console.log("[VOICE_RENDER_MAIN]", {
+                        user_id: vUser.user_id,
+                        matchingUserFound: !!matchingUser,
+                        usernameFound: matchingUser?.username,
+                        usernameExhibited: displayName
+                      });
 
                       return (
-                        <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                        <div key={vUser.user_id || vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                           vUser.isSpeaking 
                             ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                             : 'text-zinc-400 font-medium'
@@ -805,12 +808,18 @@ export function Dashboard({ session }: DashboardProps) {
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                                ).map((vUser: any, vIdx) => {
-                                // Pega o seu ID atual para comparação
-                                const remoteUser = globalOnlineUsers.find((u: any) => u.username !== 'jeidson148');
-                                const displayName = (vIdx > 0 && remoteUser) ? remoteUser.username : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
+                                const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
+                                const displayName = matchingUser?.username || vUser.username || "Usuário";
+
+                                console.log("[VOICE_RENDER_SUB]", {
+                                  user_id: vUser.user_id,
+                                  matchingUserFound: !!matchingUser,
+                                  usernameFound: matchingUser?.username,
+                                  usernameExhibited: displayName
+                                });
 
                                 return (
-                                  <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                                  <div key={vUser.user_id || vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                                     vUser.isSpeaking 
                                       ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                                       : 'text-zinc-400 font-medium'
