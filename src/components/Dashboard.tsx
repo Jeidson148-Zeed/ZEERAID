@@ -66,6 +66,11 @@ export function Dashboard({ session }: DashboardProps) {
     isMutedRef.current = isMuted
   }, [isMuted])
 
+  const globalOnlineUsersRef = useRef(globalOnlineUsers)
+  useEffect(() => {
+    globalOnlineUsersRef.current = globalOnlineUsers
+  }, [globalOnlineUsers])
+
   // Helper to identify voice channels
   const isVoiceChannel = (channel: any) => {
     if (!channel) return false
@@ -293,7 +298,13 @@ export function Dashboard({ session }: DashboardProps) {
         // 4. Sincronização do Presence
         .on('presence', { event: 'sync' }, async () => {
           const state = voiceRoom.presenceState();
-          const usersInRoom = Object.values(state).flat();
+          const usersInRoom = Object.values(state).flat().map((u: any) => {
+            const onlineUser = globalOnlineUsersRef.current.find((ou: any) => ou.user_id === u.user_id);
+            return {
+              ...u,
+              username: onlineUser?.username || u.username
+            };
+          });
           setVoiceUsers(prev => ({ ...prev, [currentVoiceChannel.id]: usersInRoom }));
           
           // Quem acabou de sincronizar inicia a oferta para todos os outros presentes
@@ -315,7 +326,7 @@ export function Dashboard({ session }: DashboardProps) {
       // Agora sim dispara o subscribe após amarrar todos os eventos
       voiceRoom.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          await voiceRoom.track({ user_id: user?.id, username: 'jeidson148', isMuted: isMutedRef.current, isSpeaking: false });
+          await voiceRoom.track({ user_id: user?.id, username: username, isMuted: isMutedRef.current, isSpeaking: false });
         }
       });
     }
@@ -372,7 +383,7 @@ export function Dashboard({ session }: DashboardProps) {
         try {
           await voiceRoomRef.current.track({
             user_id: user?.id,
-            username: 'jeidson148',
+            username: username,
             isMuted: isMuted,
             isSpeaking: isSpeaking
           })
@@ -430,7 +441,13 @@ export function Dashboard({ session }: DashboardProps) {
       room
         .on('presence', { event: 'sync' }, () => {
           const state = room.presenceState()
-          const usersInRoom = Object.values(state).flat()
+          const usersInRoom = Object.values(state).flat().map((u: any) => {
+            const onlineUser = globalOnlineUsersRef.current.find((ou: any) => ou.user_id === u.user_id)
+            return {
+              ...u,
+              username: onlineUser?.username || u.username
+            }
+          })
           setVoiceUsers(prev => ({ ...prev, [chan.id]: usersInRoom }))
         })
         .subscribe()
@@ -784,9 +801,9 @@ export function Dashboard({ session }: DashboardProps) {
                                     ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                                     : 'text-zinc-400 font-medium'
                                 }`}>
-                                  <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
-                                  <span>{vUser.username}</span>
-                                  {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
+                                   <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
+                                   <span>{vUser.username}</span>
+                                   {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
                                 </div>
                               ))}
                             </div>
