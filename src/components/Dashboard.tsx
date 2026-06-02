@@ -298,13 +298,22 @@ export function Dashboard({ session }: DashboardProps) {
         // 4. Sincronização do Presence
         .on('presence', { event: 'sync' }, async () => {
           const state = voiceRoom.presenceState();
+          console.log("[DIAGNOSTIC] voiceRoom presenceState:", state);
+          console.log("[DIAGNOSTIC] globalOnlineUsersRef.current:", globalOnlineUsersRef.current);
           const usersInRoom = Object.values(state).flat().map((u: any) => {
             const onlineUser = globalOnlineUsersRef.current.find((ou: any) => ou.user_id === u.user_id);
+            console.log("[DIAGNOSTIC] Sync mapping user:", {
+              presenceUser_user_id: u.user_id,
+              presenceUser_username: u.username,
+              onlineUser_user_id: onlineUser?.user_id,
+              onlineUser_username: onlineUser?.username
+            });
             return {
               ...u,
               username: onlineUser?.username || u.username
             };
           });
+          console.log("[DIAGNOSTIC] final usersInRoom for channel:", currentVoiceChannel.id, usersInRoom);
           setVoiceUsers(prev => ({ ...prev, [currentVoiceChannel.id]: usersInRoom }));
           
           // Quem acabou de sincronizar inicia a oferta para todos os outros presentes
@@ -755,18 +764,21 @@ export function Dashboard({ session }: DashboardProps) {
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                      ).map((vUser: any, vIdx) => {
+                      const displayName = (vIdx > 0 && globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')) 
+                        ? globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')?.username 
+                        : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
+
                       const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                      const displayName = matchingUser?.username || vUser.username || "Usuário";
-                      
-                      console.log("[VOICE_RENDER_MAIN]", {
-                        user_id: vUser.user_id,
-                        matchingUserFound: !!matchingUser,
-                        usernameFound: matchingUser?.username,
-                        usernameExhibited: displayName
+                      console.log("[DIAGNOSTIC_JSX_MAIN]", {
+                        voiceUserId: vUser.user_id,
+                        voiceUsername: vUser.username,
+                        matchedUsername: matchingUser?.username,
+                        displayNameExhibited: displayName,
+                        vUserFull: vUser
                       });
 
                       return (
-                        <div key={vUser.user_id || vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                        <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                           vUser.isSpeaking 
                             ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                             : 'text-zinc-400 font-medium'
@@ -808,18 +820,21 @@ export function Dashboard({ session }: DashboardProps) {
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                                ).map((vUser: any, vIdx) => {
-                                const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                                const displayName = matchingUser?.username || vUser.username || "Usuário";
+                                const displayName = (vIdx > 0 && globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')) 
+                                  ? globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')?.username 
+                                  : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
 
-                                console.log("[VOICE_RENDER_SUB]", {
-                                  user_id: vUser.user_id,
-                                  matchingUserFound: !!matchingUser,
-                                  usernameFound: matchingUser?.username,
-                                  usernameExhibited: displayName
+                                const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
+                                console.log("[DIAGNOSTIC_JSX_SUB]", {
+                                  voiceUserId: vUser.user_id,
+                                  voiceUsername: vUser.username,
+                                  matchedUsername: matchingUser?.username,
+                                  displayNameExhibited: displayName,
+                                  vUserFull: vUser
                                 });
 
                                 return (
-                                  <div key={vUser.user_id || vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                                  <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                                     vUser.isSpeaking 
                                       ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                                       : 'text-zinc-400 font-medium'
