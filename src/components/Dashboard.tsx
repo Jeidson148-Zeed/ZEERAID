@@ -761,7 +761,9 @@ export function Dashboard({ session }: DashboardProps) {
                           : 'text-zinc-400 font-medium'
                       }`}>
                         <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
-                        <span>{vUser.username}</span>
+                        <span>
+                          {globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username}
+                        </span>
                         {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
                       </div>
                     ))}
@@ -802,7 +804,9 @@ export function Dashboard({ session }: DashboardProps) {
                                     : 'text-zinc-400 font-medium'
                                 }`}>
                                    <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
-                                   <span>{vUser.username}</span>
+                                   <span>
+                                     {globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username}
+                                   </span>
                                    {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
                                 </div>
                               ))}
