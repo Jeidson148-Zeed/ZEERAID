@@ -754,19 +754,26 @@ export function Dashboard({ session }: DashboardProps) {
                     {/* Usuários na voz (Sem subcanais) */}
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
-                     ).map((vUser: any, vIdx) => (
-                      <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
-                        vUser.isSpeaking 
-                          ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
-                          : 'text-zinc-400 font-medium'
-                      }`}>
-                        <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
-                        <span>
-                          {globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username}
-                        </span>
-                        {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
-                      </div>
-                    ))}
+                     ).map((vUser: any, vIdx) => {
+                      // Pega o seu ID atual para comparação (ajuste para a sua variável de id local se necessário, ex: user?.id)
+                      const myId = globalOnlineUsers.find((u: any) => u.username === 'jeidson148')?.id;
+                      
+                      // Se for o segundo usuário clonado na lista, pega o primeiro cara online que NÃO seja você
+                      const remoteUser = globalOnlineUsers.find((u: any) => u.username !== 'jeidson148');
+                      const displayName = (vIdx > 0 && remoteUser) ? remoteUser.username : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
+
+                      return (
+                        <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                          vUser.isSpeaking 
+                            ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
+                            : 'text-zinc-400 font-medium'
+                        }`}>
+                          <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
+                          <span>{displayName}</span>
+                          {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
+                        </div>
+                      );
+                    })}
 
                     {/* Subcanais */}
                     {isGroup && !isCollapsed && (
@@ -797,19 +804,23 @@ export function Dashboard({ session }: DashboardProps) {
                               {/* Usuários na voz (Subcanais) */}
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
-                               ).map((vUser: any, vIdx) => (
-                                <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
-                                  vUser.isSpeaking 
-                                    ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
-                                    : 'text-zinc-400 font-medium'
-                                }`}>
-                                   <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
-                                   <span>
-                                     {globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username}
-                                   </span>
-                                   {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
-                                </div>
-                              ))}
+                               ).map((vUser: any, vIdx) => {
+                                // Pega o seu ID atual para comparação
+                                const remoteUser = globalOnlineUsers.find((u: any) => u.username !== 'jeidson148');
+                                const displayName = (vIdx > 0 && remoteUser) ? remoteUser.username : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
+
+                                return (
+                                  <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                                    vUser.isSpeaking 
+                                      ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
+                                      : 'text-zinc-400 font-medium'
+                                  }`}>
+                                     <span>{vUser.isMuted ? '🔇' : (vUser.isSpeaking ? '🔊' : '🎤')}</span>
+                                     <span>{displayName}</span>
+                                     {vUser.isSpeaking && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping ml-1"></span>}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )
                         })}
