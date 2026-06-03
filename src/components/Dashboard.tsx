@@ -561,15 +561,11 @@ export function Dashboard({ session }: DashboardProps) {
   useEffect(() => {
     fetchChannels()
 
-    // Garante que o perfil do usuário logado existe na tabela profiles
-    const ensureProfile = async () => {
-      if (!user) return
-      const name = user.user_metadata?.username || user.email?.split('@')[0] || 'Membro'
-      await supabase.from('profiles').upsert({ id: user.id, username: name })
-      // Pré-carrega o próprio username no cache
-      usernameCacheRef.current[user.id] = name
+    // Pré-carrega o próprio username no cache
+    if (user?.id && username) {
+      usernameCacheRef.current[user.id] = username
+      setUsernameCache(prev => ({ ...prev, [user.id]: username }))
     }
-    ensureProfile()
 
     // Inicializa canal ativo padrão apenas após a carga inicial de dados
     const initializeDefaultChannel = async () => {
@@ -578,7 +574,7 @@ export function Dashboard({ session }: DashboardProps) {
         .select('*')
         .order('position', { ascending: true })
       if (data && data.length > 0) {
-        const primeiroCanal = data.find(c => !isVoiceChannel(c)) || data[0]
+        const primeiroCanal = data.find((c: any) => !isVoiceChannel(c)) || data[0]
         setCurrentTextChannel(primeiroCanal)
       }
     }
@@ -613,9 +609,10 @@ export function Dashboard({ session }: DashboardProps) {
 
     const fetchMessages = async () => {
       if (!currentTextChannel) return
+      // Busca mensagens sem join com profiles — username vem do cache/presence
       const { data, error } = await supabase
         .from('messages')
-        .select('id, content, created_at, user_id, profiles(username)')
+        .select('id, content, created_at, user_id')
         .eq('channel_id', currentTextChannel.id)
         .order('created_at', { ascending: true })
 
@@ -643,22 +640,10 @@ export function Dashboard({ session }: DashboardProps) {
           filter: `channel_id=eq.${currentTextChannel?.id}`,
         },
         async (payload) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', payload.new.user_id)
-            .single()
-
-          // Tenta perfil do banco, depois cache, depois fallback
-          const resolvedName = profile?.username 
-            || getUsername(payload.new.user_id)
-            || (payload.new.user_id === session.user.id ? username : 'Membro')
-
-          if (profile?.username) cacheUsername(payload.new.user_id, profile.username)
-
+          // Username vem do cache populado pelo presence — sem query extra
           const newMessage = {
             ...payload.new,
-            profiles: { username: resolvedName }
+            profiles: { username: usernameCache[payload.new.user_id] || usernameCacheRef.current[payload.new.user_id] || 'Membro' }
           }
           setMessages((prev) => [...prev, newMessage])
         }
@@ -1040,7 +1025,7 @@ export function Dashboard({ session }: DashboardProps) {
         <section className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.map(msg => {
             const senderName = msg.profiles?.username 
-              || getUsername(msg.user_id)
+              || usernameCache[msg.user_id]
               || (msg.user_id === session.user.id ? username : 'Membro')
             const formattedTime = new Date(msg.created_at || msg.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
