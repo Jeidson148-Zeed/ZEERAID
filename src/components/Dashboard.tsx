@@ -36,22 +36,20 @@ export function Dashboard({ session }: DashboardProps) {
   const [currentVoiceChannel, setCurrentVoiceChannel] = useState<any>(null)
   const myRole = (username === 'jeidson148' || user?.email?.includes('jeidson148') || username === 'jeidson147') ? 'owner' : 'member'
 
-  // Cache de usernames buscados do banco: { [user_id]: username }
-  const [usernameCache, setUsernameCache] = useState<Record<string, string>>({})
-  const usernameCacheRef = useRef<Record<string, string>>({})
+  // Cache de usernames: { [user_id]: username }
+  // Populado pelo global presence (fonte mais confiável)
+  const usernameCacheRef = useRef<Record<string, string>>({ [user?.id || '']: username })
+  const [usernameCache, setUsernameCache] = useState<Record<string, string>>({ [user?.id || '']: username })
 
-  // Busca username do banco pelo user_id, usa cache para não repetir queries
-  const resolveUsername = async (userId: string): Promise<string> => {
-    if (usernameCacheRef.current[userId]) return usernameCacheRef.current[userId]
-    const { data } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .single()
-    const name = data?.username || 'Membro'
+  const cacheUsername = (userId: string, name: string) => {
+    if (!userId || !name || name === 'Membro') return
     usernameCacheRef.current[userId] = name
     setUsernameCache(prev => ({ ...prev, [userId]: name }))
-    return name
+  }
+
+  // Retorna username do cache, com fallback seguro
+  const getUsername = (userId: string, fallback?: string): string => {
+    return usernameCacheRef.current[userId] || fallback || 'Membro'
   }
   const [userStatus, setUserStatus] = useState({ type: 'online', text: 'Conectado' })
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
@@ -314,17 +312,19 @@ export function Dashboard({ session }: DashboardProps) {
           }
         })
         // 4. Sincronização do Presence
-        .on('presence', { event: 'sync' }, async () => {
+        .on('presence', { event: 'sync' }, () => {
           const state = voiceRoom.presenceState();
           const rawUsers = Object.values(state).flat() as any[];
 
-          // Resolve todos os usernames direto do banco em paralelo
-          const usersInRoom = await Promise.all(
-            rawUsers.map(async (u: any) => {
-              const name = await resolveUsername(u.user_id)
-              return { ...u, username: name }
-            })
-          )
+          // Cada usuário rastreou seu próprio username — confia nele e salva no cache
+          rawUsers.forEach((u: any) => {
+            if (u.user_id && u.username) cacheUsername(u.user_id, u.username)
+          })
+
+          const usersInRoom = rawUsers.map((u: any) => ({
+            ...u,
+            username: getUsername(u.user_id, u.username)
+          }))
 
           setVoiceUsers(prev => ({ ...prev, [currentVoiceChannel.id]: usersInRoom }));
           
@@ -425,6 +425,10 @@ export function Dashboard({ session }: DashboardProps) {
       .on('presence', { event: 'sync' }, () => {
         const state = globalChannel.presenceState()
         const users = Object.values(state).flat() as any[]
+        // Popula o cache de usernames com todos os usuários online
+        users.forEach((u: any) => {
+          if (u.user_id && u.username) cacheUsername(u.user_id, u.username)
+        })
         // remove duplicatas por user_id
         const unique = Array.from(new Map(users.map(u => [u.user_id, u])).values())
         setGlobalOnlineUsers(unique)
@@ -460,15 +464,17 @@ export function Dashboard({ session }: DashboardProps) {
 
       const room = supabase.channel(`voice:${chan.id}`)
       room
-        .on('presence', { event: 'sync' }, async () => {
+        .on('presence', { event: 'sync' }, () => {
           const state = room.presenceState()
           const rawUsers = Object.values(state).flat() as any[]
-          const usersInRoom = await Promise.all(
-            rawUsers.map(async (u: any) => {
-              const name = await resolveUsername(u.user_id)
-              return { ...u, username: name }
-            })
-          )
+          // Cada usuário rastreou seu próprio username — confia e salva no cache
+          rawUsers.forEach((u: any) => {
+            if (u.user_id && u.username) cacheUsername(u.user_id, u.username)
+          })
+          const usersInRoom = rawUsers.map((u: any) => ({
+            ...u,
+            username: getUsername(u.user_id, u.username)
+          }))
           setVoiceUsers(prev => ({ ...prev, [chan.id]: usersInRoom }))
         })
         .subscribe()
@@ -612,14 +618,18 @@ export function Dashboard({ session }: DashboardProps) {
           filter: `channel_id=eq.${currentTextChannel?.id}`,
         },
         async (payload) => {
-          // Fetch username profile for the new message
           const { data: profile } = await supabase
             .from('profiles')
             .select('username')
             .eq('id', payload.new.user_id)
             .single()
 
-          const resolvedName = profile?.username || await resolveUsername(payload.new.user_id)
+          // Tenta perfil do banco, depois cache, depois fallback
+          const resolvedName = profile?.username 
+            || getUsername(payload.new.user_id)
+            || (payload.new.user_id === session.user.id ? username : 'Membro')
+
+          if (profile?.username) cacheUsername(payload.new.user_id, profile.username)
 
           const newMessage = {
             ...payload.new,
@@ -1006,7 +1016,9 @@ export function Dashboard({ session }: DashboardProps) {
         {/* Mensagens */}
         <section className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.map(msg => {
-            const senderName = msg.profiles?.username || usernameCache[msg.user_id] || (msg.user_id === session.user.id ? username : 'Membro')
+            const senderName = msg.profiles?.username 
+              || getUsername(msg.user_id)
+              || (msg.user_id === session.user.id ? username : 'Membro')
             const formattedTime = new Date(msg.created_at || msg.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
               minute: '2-digit'
