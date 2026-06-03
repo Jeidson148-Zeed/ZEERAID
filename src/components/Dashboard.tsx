@@ -39,12 +39,10 @@ export function Dashboard({ session }: DashboardProps) {
   // Cache de usernames: { [user_id]: username }
   // Populado pelo global presence (fonte mais confiável)
   const usernameCacheRef = useRef<Record<string, string>>({ [user?.id || '']: username })
-  const [usernameCache, setUsernameCache] = useState<Record<string, string>>({ [user?.id || '']: username })
 
   const cacheUsername = (userId: string, name: string) => {
     if (!userId || !name || name === 'Membro') return
     usernameCacheRef.current[userId] = name
-    setUsernameCache(prev => ({ ...prev, [userId]: name }))
   }
 
   // Retorna username do cache, com fallback seguro
@@ -564,7 +562,6 @@ export function Dashboard({ session }: DashboardProps) {
       await supabase.from('profiles').upsert({ id: user.id, username: name })
       // Pré-carrega o próprio username no cache
       usernameCacheRef.current[user.id] = name
-      setUsernameCache(prev => ({ ...prev, [user.id]: name }))
     }
     ensureProfile()
 
