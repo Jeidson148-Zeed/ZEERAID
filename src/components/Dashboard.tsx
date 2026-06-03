@@ -36,18 +36,20 @@ export function Dashboard({ session }: DashboardProps) {
   const [currentVoiceChannel, setCurrentVoiceChannel] = useState<any>(null)
   const myRole = (username === 'jeidson148' || user?.email?.includes('jeidson148') || username === 'jeidson147') ? 'owner' : 'member'
 
-  // Cache de usernames: { [user_id]: username }
-  // Populado pelo global presence (fonte mais confiável)
+  // Cache de usernames reativo: { [user_id]: username }
+  const [usernameCache, setUsernameCache] = useState<Record<string, string>>({ [user?.id || '']: username })
   const usernameCacheRef = useRef<Record<string, string>>({ [user?.id || '']: username })
 
   const cacheUsername = (userId: string, name: string) => {
     if (!userId || !name || name === 'Membro') return
+    if (usernameCacheRef.current[userId] === name) return // já tem, não re-renderiza
     usernameCacheRef.current[userId] = name
+    setUsernameCache(prev => ({ ...prev, [userId]: name }))
   }
 
   // Retorna username do cache, com fallback seguro
   const getUsername = (userId: string, fallback?: string): string => {
-    return usernameCacheRef.current[userId] || fallback || 'Membro'
+    return usernameCache[userId] || usernameCacheRef.current[userId] || fallback || 'Membro'
   }
   const [userStatus, setUserStatus] = useState({ type: 'online', text: 'Conectado' })
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
@@ -818,8 +820,7 @@ export function Dashboard({ session }: DashboardProps) {
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                      ).map((vUser: any) => {
-                      const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                      const displayName = matchingUser?.username || vUser.username || 'Membro';
+                      const displayName = usernameCache[vUser.user_id] || vUser.username || 'Membro'
 
                       return (
                         <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
@@ -864,8 +865,7 @@ export function Dashboard({ session }: DashboardProps) {
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                                ).map((vUser: any) => {
-                                const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                                const displayName = matchingUser?.username || vUser.username || 'Membro';
+                                const displayName = usernameCache[vUser.user_id] || vUser.username || 'Membro'
 
                                 return (
                                   <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
