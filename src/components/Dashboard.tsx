@@ -763,19 +763,9 @@ export function Dashboard({ session }: DashboardProps) {
                     {/* Usuários na voz (Sem subcanais) */}
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
-                     ).map((vUser: any, vIdx) => {
-                      const displayName = (vIdx > 0 && globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')) 
-                        ? globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')?.username 
-                        : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
-
+                     ).map((vUser: any) => {
                       const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                      console.log("[DIAGNOSTIC_JSX_MAIN]", {
-                        voiceUserId: vUser.user_id,
-                        voiceUsername: vUser.username,
-                        matchedUsername: matchingUser?.username,
-                        displayNameExhibited: displayName,
-                        vUserFull: vUser
-                      });
+                      const displayName = matchingUser?.username || vUser.username || 'Membro';
 
                       return (
                         <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
@@ -819,19 +809,9 @@ export function Dashboard({ session }: DashboardProps) {
                               {/* Usuários na voz (Subcanais) */}
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
-                               ).map((vUser: any, vIdx) => {
-                                const displayName = (vIdx > 0 && globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')) 
-                                  ? globalOnlineUsers.find((u: any) => u.username !== 'jeidson148')?.username 
-                                  : (globalOnlineUsers.find((u: any) => u.id === vUser.user_id || u.user_id === vUser.user_id)?.username || vUser.username);
-
+                               ).map((vUser: any) => {
                                 const matchingUser = globalOnlineUsers.find((u: any) => u.user_id === vUser.user_id);
-                                console.log("[DIAGNOSTIC_JSX_SUB]", {
-                                  voiceUserId: vUser.user_id,
-                                  voiceUsername: vUser.username,
-                                  matchedUsername: matchingUser?.username,
-                                  displayNameExhibited: displayName,
-                                  vUserFull: vUser
-                                });
+                                const displayName = matchingUser?.username || vUser.username || 'Membro';
 
                                 return (
                                   <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
