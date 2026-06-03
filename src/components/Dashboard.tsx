@@ -521,9 +521,7 @@ export function Dashboard({ session }: DashboardProps) {
       .order('position', { ascending: true })
 
     if (error) {
-      console.error('Error fetching channels:', error.message, error.code, error.details)
-      // Mostra erro visível para diagnóstico
-      alert(`Erro ao carregar canais: ${error.message} (${error.code})`)
+      console.error('Error fetching channels:', error.message)
       return
     }
 
@@ -541,15 +539,13 @@ export function Dashboard({ session }: DashboardProps) {
     e.preventDefault()
     if (!newChannelName.trim()) return
 
-    const serverId = channels[0]?.server_id || '8aba762a-f25f-49dc-a499-aacc69c8db63'
-    const gamingRoomId = channels.find(c => c.name === 'Gaming Room')?.id || '7750078d-92d9-4fc1-9e64-e78e59fd2721'
+    const gamingRoom = channels.find(c => c.name === 'Gaming Room')
 
     const { error } = await supabase
       .from('channels')
       .insert({
         name: newChannelName.trim(),
-        server_id: serverId,
-        parent_id: newChannelType === 'voice' ? gamingRoomId : null,
+        parent_id: newChannelType === 'voice' ? (gamingRoom?.id || null) : null,
         position: channels.length + 1
       })
 
