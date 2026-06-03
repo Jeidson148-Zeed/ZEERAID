@@ -521,13 +521,14 @@ export function Dashboard({ session }: DashboardProps) {
       .order('position', { ascending: true })
 
     if (error) {
-      console.error('Error fetching channels:', error.message)
+      console.error('Error fetching channels:', error.message, error.code, error.details)
+      // Mostra erro visível para diagnóstico
+      alert(`Erro ao carregar canais: ${error.message} (${error.code})`)
       return
     }
 
     if (data) {
       setChannels(data)
-      // Define o canal inicial apenas na primeira carga
       if (setInitialChannel && data.length > 0) {
         const primeiroCanal = data.find((c: any) => !isVoiceChannel(c)) || data[0]
         setCurrentTextChannel(primeiroCanal)
