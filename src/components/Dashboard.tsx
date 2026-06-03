@@ -29,12 +29,30 @@ interface DashboardProps {
 
 export function Dashboard({ session }: DashboardProps) {
   const user = session?.user
-  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User'
+  
+  // Busca o username de todas as fontes possíveis em ordem de prioridade
+  const username = 
+    user?.user_metadata?.username ||      // cadastrado com username
+    user?.user_metadata?.full_name ||     // OAuth (Google, etc)
+    user?.user_metadata?.name ||          // outra chave OAuth
+    user?.email?.split('@')[0] ||         // prefixo do email como fallback
+    'Membro'
   
   const [channels, setChannels] = useState<any[]>([])
   const [currentTextChannel, setCurrentTextChannel] = useState<any>(null)
   const [currentVoiceChannel, setCurrentVoiceChannel] = useState<any>(null)
   const myRole = (username === 'jeidson148' || user?.email?.includes('jeidson148') || username === 'jeidson147') ? 'owner' : 'member'
+
+  // Busca o username do usuário atual direto da sessão ativa (mais confiável)
+  const getActiveUsername = async (): Promise<string> => {
+    const { data: { session: s } } = await supabase.auth.getSession()
+    const u = s?.user
+    return u?.user_metadata?.username 
+      || u?.user_metadata?.full_name
+      || u?.user_metadata?.name
+      || u?.email?.split('@')[0] 
+      || username
+  }
 
   // Cache de usernames reativo: { [user_id]: username }
   const [usernameCache, setUsernameCache] = useState<Record<string, string>>({ [user?.id || '']: username })
@@ -347,12 +365,7 @@ export function Dashboard({ session }: DashboardProps) {
       // Agora sim dispara o subscribe após amarrar todos os eventos
       voiceRoom.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          // Busca o username diretamente da sessão ativa para garantir o valor correto
-          const { data: { session: activeSession } } = await supabase.auth.getSession()
-          const activeUsername = activeSession?.user?.user_metadata?.username 
-            || activeSession?.user?.email?.split('@')[0] 
-            || username
-
+          const activeUsername = await getActiveUsername()
           await voiceRoom.track({ 
             user_id: user?.id, 
             username: activeUsername, 
@@ -413,11 +426,7 @@ export function Dashboard({ session }: DashboardProps) {
     trackTimerRef.current = setTimeout(async () => {
       if (currentVoiceChannel && voiceRoomRef.current) {
         try {
-          const { data: { session: activeSession } } = await supabase.auth.getSession()
-          const activeUsername = activeSession?.user?.user_metadata?.username 
-            || activeSession?.user?.email?.split('@')[0] 
-            || username
-
+          const activeUsername = await getActiveUsername()
           await voiceRoomRef.current.track({
             user_id: user?.id,
             username: activeUsername,
@@ -452,12 +461,7 @@ export function Dashboard({ session }: DashboardProps) {
 
     globalChannel.subscribe(async (status: string) => {
       if (status === 'SUBSCRIBED') {
-        // Busca o username diretamente da sessão ativa para garantir o valor correto
-        const { data: { session: activeSession } } = await supabase.auth.getSession()
-        const activeUsername = activeSession?.user?.user_metadata?.username 
-          || activeSession?.user?.email?.split('@')[0] 
-          || username
-
+        const activeUsername = await getActiveUsername()
         await globalChannel.track({
           user_id: user?.id,
           username: activeUsername,
