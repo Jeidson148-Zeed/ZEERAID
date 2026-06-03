@@ -598,7 +598,7 @@ export function Dashboard({ session }: DashboardProps) {
       if (!currentTextChannel) return
       // Busca mensagens sem join com profiles — username vem do cache/presence
       const { data, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .select('id, content, created_at, user_id')
         .eq('channel_id', currentTextChannel.id)
         .order('created_at', { ascending: true })
@@ -623,7 +623,7 @@ export function Dashboard({ session }: DashboardProps) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages',
+          table: 'chat_messages',
           filter: `channel_id=eq.${currentTextChannel?.id}`,
         },
         async (payload) => {
@@ -640,7 +640,7 @@ export function Dashboard({ session }: DashboardProps) {
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'messages'
+          table: 'chat_messages'
         },
         (payload) => {
           setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id))
@@ -670,7 +670,7 @@ export function Dashboard({ session }: DashboardProps) {
     const { data: { session: activeSession } } = await supabase.auth.getSession()
     if (!activeSession?.user) return
 
-    const { error } = await supabase.from('messages').insert({
+    const { error } = await supabase.from('chat_messages').insert({
       channel_id: currentTextChannel.id,
       user_id: activeSession.user.id,
       content: inputVal.trim()
@@ -686,7 +686,7 @@ export function Dashboard({ session }: DashboardProps) {
   const handleDeleteMessage = async (messageId: string) => {
     try {
       const { error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .delete()
         .eq('id', messageId)
 

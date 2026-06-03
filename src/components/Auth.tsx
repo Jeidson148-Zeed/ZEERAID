@@ -41,12 +41,18 @@ export function Auth() {
         setSuccessMsg('Cadastro realizado! Verifique seu e-mail ou tente fazer o login.')
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       if (error) {
         setErrorMsg(error.message)
+      } else if (signInData.user) {
+        // Garante que profiles existe para este usuário (necessário para FK de chat_messages)
+        await supabase.from('profiles').upsert({
+          id: signInData.user.id,
+          username: signInData.user.user_metadata?.username || email.split('@')[0],
+        }, { onConflict: 'id', ignoreDuplicates: true })
       }
     }
     setLoading(false)
