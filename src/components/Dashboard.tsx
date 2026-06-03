@@ -768,7 +768,7 @@ export function Dashboard({ session }: DashboardProps) {
                       const displayName = matchingUser?.username || vUser.username || 'Membro';
 
                       return (
-                        <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                        <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                           vUser.isSpeaking 
                             ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                             : 'text-zinc-400 font-medium'
@@ -814,7 +814,7 @@ export function Dashboard({ session }: DashboardProps) {
                                 const displayName = matchingUser?.username || vUser.username || 'Membro';
 
                                 return (
-                                  <div key={vIdx} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
+                                  <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
                                     vUser.isSpeaking 
                                       ? 'text-emerald-300 font-bold drop-shadow-[0_0_6px_#34d399]' 
                                       : 'text-zinc-400 font-medium'
