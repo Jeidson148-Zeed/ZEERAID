@@ -10,27 +10,8 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (error || !session) {
-        // Sessão inválida ou inexistente — limpa tudo e vai para login
-        await supabase.auth.signOut()
-        setSession(null)
-      } else {
-        // Verifica se o usuário ainda existe no Supabase
-        const { error: userError } = await supabase.auth.getUser()
-        if (userError) {
-          // Usuário foi deletado — limpa sessão local
-          await supabase.auth.signOut()
-          setSession(null)
-        } else {
-          setSession(session)
-        }
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
+    // onAuthStateChange é a fonte de verdade — não usa getSession separado
+    // para evitar race condition que causava logout indevido
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setLoading(false)

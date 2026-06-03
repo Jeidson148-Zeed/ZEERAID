@@ -514,7 +514,7 @@ export function Dashboard({ session }: DashboardProps) {
   }, [channels, currentVoiceChannel])
 
   // Fetch channels from database
-  const fetchChannels = async () => {
+  const fetchChannels = async (setInitialChannel = false) => {
     const { data, error } = await supabase
       .from('channels')
       .select('*')
@@ -527,6 +527,11 @@ export function Dashboard({ session }: DashboardProps) {
 
     if (data) {
       setChannels(data)
+      // Define o canal inicial apenas na primeira carga
+      if (setInitialChannel && data.length > 0) {
+        const primeiroCanal = data.find((c: any) => !isVoiceChannel(c)) || data[0]
+        setCurrentTextChannel(primeiroCanal)
+      }
     }
   }
 
@@ -559,7 +564,8 @@ export function Dashboard({ session }: DashboardProps) {
   }
 
   useEffect(() => {
-    fetchChannels()
+    // Uma única query — busca canais e define o canal inicial
+    fetchChannels(true)
 
     // Pré-carrega o próprio username no cache
     if (user?.id && username) {
@@ -567,32 +573,13 @@ export function Dashboard({ session }: DashboardProps) {
       setUsernameCache(prev => ({ ...prev, [user.id]: username }))
     }
 
-    // Inicializa canal ativo padrão apenas após a carga inicial de dados
-    const initializeDefaultChannel = async () => {
-      const { data } = await supabase
-        .from('channels')
-        .select('*')
-        .order('position', { ascending: true })
-      if (data && data.length > 0) {
-        const primeiroCanal = data.find((c: any) => !isVoiceChannel(c)) || data[0]
-        setCurrentTextChannel(primeiroCanal)
-      }
-    }
-    initializeDefaultChannel()
-
     // Realtime channel list subscription
     const channelsSub = supabase
       .channel('realtime:channels')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channels'
-        },
-        () => {
-          fetchChannels()
-        }
+        { event: '*', schema: 'public', table: 'channels' },
+        () => { fetchChannels(false) }
       )
       .subscribe()
 
