@@ -347,7 +347,18 @@ export function Dashboard({ session }: DashboardProps) {
       // Agora sim dispara o subscribe após amarrar todos os eventos
       voiceRoom.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          await voiceRoom.track({ user_id: user?.id, username: username, isMuted: isMutedRef.current, isSpeaking: false });
+          // Busca o username diretamente da sessão ativa para garantir o valor correto
+          const { data: { session: activeSession } } = await supabase.auth.getSession()
+          const activeUsername = activeSession?.user?.user_metadata?.username 
+            || activeSession?.user?.email?.split('@')[0] 
+            || username
+
+          await voiceRoom.track({ 
+            user_id: user?.id, 
+            username: activeUsername, 
+            isMuted: isMutedRef.current, 
+            isSpeaking: false 
+          });
         }
       });
     }
@@ -402,9 +413,14 @@ export function Dashboard({ session }: DashboardProps) {
     trackTimerRef.current = setTimeout(async () => {
       if (currentVoiceChannel && voiceRoomRef.current) {
         try {
+          const { data: { session: activeSession } } = await supabase.auth.getSession()
+          const activeUsername = activeSession?.user?.user_metadata?.username 
+            || activeSession?.user?.email?.split('@')[0] 
+            || username
+
           await voiceRoomRef.current.track({
             user_id: user?.id,
-            username: username,
+            username: activeUsername,
             isMuted: isMuted,
             isSpeaking: isSpeaking
           })
@@ -436,9 +452,15 @@ export function Dashboard({ session }: DashboardProps) {
 
     globalChannel.subscribe(async (status: string) => {
       if (status === 'SUBSCRIBED') {
+        // Busca o username diretamente da sessão ativa para garantir o valor correto
+        const { data: { session: activeSession } } = await supabase.auth.getSession()
+        const activeUsername = activeSession?.user?.user_metadata?.username 
+          || activeSession?.user?.email?.split('@')[0] 
+          || username
+
         await globalChannel.track({
           user_id: user?.id,
-          username: username || 'jeidson148',
+          username: activeUsername,
           role: myRole,
           status_type: userStatus.type,
           status_text: userStatus.text
