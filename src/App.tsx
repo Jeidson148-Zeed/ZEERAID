@@ -11,8 +11,22 @@ function App() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (error || !session) {
+        // Sessão inválida ou inexistente — limpa tudo e vai para login
+        await supabase.auth.signOut()
+        setSession(null)
+      } else {
+        // Verifica se o usuário ainda existe no Supabase
+        const { error: userError } = await supabase.auth.getUser()
+        if (userError) {
+          // Usuário foi deletado — limpa sessão local
+          await supabase.auth.signOut()
+          setSession(null)
+        } else {
+          setSession(session)
+        }
+      }
       setLoading(false)
     })
 
