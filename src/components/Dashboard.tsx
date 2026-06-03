@@ -529,6 +529,17 @@ export function Dashboard({ session }: DashboardProps) {
   useEffect(() => {
     fetchChannels()
 
+    // Garante que o perfil do usuário logado existe na tabela profiles
+    const ensureProfile = async () => {
+      if (!user) return
+      const name = user.user_metadata?.username || user.email?.split('@')[0] || 'Membro'
+      await supabase.from('profiles').upsert({ id: user.id, username: name })
+      // Pré-carrega o próprio username no cache
+      usernameCacheRef.current[user.id] = name
+      setUsernameCache(prev => ({ ...prev, [user.id]: name }))
+    }
+    ensureProfile()
+
     // Inicializa canal ativo padrão apenas após a carga inicial de dados
     const initializeDefaultChannel = async () => {
       const { data } = await supabase

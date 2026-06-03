@@ -19,7 +19,7 @@ export function Auth() {
     setSuccessMsg(null)
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -31,6 +31,13 @@ export function Auth() {
       if (error) {
         setErrorMsg(error.message)
       } else {
+        // Insere o username na tabela profiles para garantir consistência
+        if (data.user) {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            username: username || email.split('@')[0],
+          })
+        }
         setSuccessMsg('Cadastro realizado! Verifique seu e-mail ou tente fazer o login.')
       }
     } else {
