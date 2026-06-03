@@ -60,14 +60,9 @@ export function Dashboard({ session }: DashboardProps) {
 
   const cacheUsername = (userId: string, name: string) => {
     if (!userId || !name || name === 'Membro') return
-    if (usernameCacheRef.current[userId] === name) return // já tem, não re-renderiza
+    if (usernameCacheRef.current[userId] === name) return
     usernameCacheRef.current[userId] = name
     setUsernameCache(prev => ({ ...prev, [userId]: name }))
-  }
-
-  // Retorna username do cache, com fallback seguro
-  const getUsername = (userId: string, fallback?: string): string => {
-    return usernameCache[userId] || usernameCacheRef.current[userId] || fallback || 'Membro'
   }
   const [userStatus, setUserStatus] = useState({ type: 'online', text: 'Conectado' })
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
@@ -332,21 +327,13 @@ export function Dashboard({ session }: DashboardProps) {
         // 4. Sincronização do Presence
         .on('presence', { event: 'sync' }, () => {
           const state = voiceRoom.presenceState();
-          const rawUsers = Object.values(state).flat() as any[];
-
-          // Cada usuário rastreou seu próprio username — confia nele e salva no cache
-          rawUsers.forEach((u: any) => {
-            if (u.user_id && u.username) cacheUsername(u.user_id, u.username)
-          })
-
-          const usersInRoom = rawUsers.map((u: any) => ({
+          // Usa DIRETAMENTE o username que cada usuário rastreou — sem substituição
+          const usersInRoom = (Object.values(state).flat() as any[]).map((u: any) => ({
             ...u,
-            username: getUsername(u.user_id, u.username)
+            // O username já veio do getActiveUsername de cada usuário — confia nele
           }))
-
           setVoiceUsers(prev => ({ ...prev, [currentVoiceChannel.id]: usersInRoom }));
           
-          // Quem acabou de sincronizar inicia a oferta para todos os outros presentes
           usersInRoom.forEach(async (remoteUser: any) => {
             if (remoteUser.user_id === user?.id) return;
             if (!peerConnections.current[remoteUser.user_id]) {
@@ -492,15 +479,8 @@ export function Dashboard({ session }: DashboardProps) {
       room
         .on('presence', { event: 'sync' }, () => {
           const state = room.presenceState()
-          const rawUsers = Object.values(state).flat() as any[]
-          // Cada usuário rastreou seu próprio username — confia e salva no cache
-          rawUsers.forEach((u: any) => {
-            if (u.user_id && u.username) cacheUsername(u.user_id, u.username)
-          })
-          const usersInRoom = rawUsers.map((u: any) => ({
-            ...u,
-            username: getUsername(u.user_id, u.username)
-          }))
+          // Usa diretamente o username rastreado por cada usuário
+          const usersInRoom = (Object.values(state).flat() as any[])
           setVoiceUsers(prev => ({ ...prev, [chan.id]: usersInRoom }))
         })
         .subscribe()
@@ -793,7 +773,8 @@ export function Dashboard({ session }: DashboardProps) {
                     {!isGroup && isVoiceChannel(parent) && Array.from(
                        new Map((voiceUsers[parent.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                      ).map((vUser: any) => {
-                      const displayName = usernameCache[vUser.user_id] || vUser.username || 'Membro'
+                      // username vem direto do Presence rastreado pelo próprio usuário
+                      const displayName = vUser.username || 'Membro'
 
                       return (
                         <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
@@ -838,7 +819,8 @@ export function Dashboard({ session }: DashboardProps) {
                               {isVoiceChannel(sub) && Array.from(
                                  new Map((voiceUsers[sub.id] || []).filter((u: any) => u && u.user_id).map((u: any) => [u.user_id, u])).values()
                                ).map((vUser: any) => {
-                                const displayName = usernameCache[vUser.user_id] || vUser.username || 'Membro'
+                                // username vem direto do Presence rastreado pelo próprio usuário
+                                const displayName = vUser.username || 'Membro'
 
                                 return (
                                   <div key={vUser.user_id} className={`pl-10 text-xs flex items-center gap-1 py-0.5 transition-all ${
