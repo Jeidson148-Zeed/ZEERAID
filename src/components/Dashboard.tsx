@@ -108,10 +108,19 @@ export function Dashboard({ session }: DashboardProps) {
 
   // WebRTC Presence connection handlers
   const joinVoiceChannel = async (channel: any) => {
+    if (user?.id) {
+      await supabase.from('voice_channel_users').upsert({
+        channel_id: channel.id,
+        user_id: user.id
+      })
+    }
     setCurrentVoiceChannel(channel)
   }
 
   const leaveVoiceChannel = async () => {
+    if (user?.id) {
+      await supabase.from('voice_channel_users').delete().eq('user_id', user.id)
+    }
     setCurrentVoiceChannel(null)
   }
 
@@ -136,8 +145,12 @@ export function Dashboard({ session }: DashboardProps) {
   }
 
   // Lógica de Desconexão de Sala de Voz
-  const handleDisconnectVoice = () => {
+  const handleDisconnectVoice = async () => {
     if (!currentVoiceChannel) return
+
+    if (user?.id) {
+      await supabase.from('voice_channel_users').delete().eq('user_id', user.id)
+    }
 
     localStream.current?.getTracks().forEach(track => track.stop())
     localStream.current = null
@@ -464,34 +477,72 @@ export function Dashboard({ session }: DashboardProps) {
     }
   }, [user, username, userStatus, myRole])
 
-  // Escuta Presence de todos os canais de voz para listar na barra lateral
+  // Escuta em tempo real a tabela voice_channel_users para listar os usuários na barra lateral
   useEffect(() => {
-    if (channels.length === 0) return
+    const fetchVoiceUsers = async () => {
+      const { data, error } = await supabase
+        .from('voice_channel_users')
+        .select('channel_id, user_id, profiles(username, avatar_url)')
 
-    const voiceChannels = channels.filter(c => isVoiceChannel(c))
-    const subs: any[] = []
+      if (error) {
+        console.error('Erro ao buscar usuários do canal de voz:', error.message)
+        return
+      }
 
-    voiceChannels.forEach(chan => {
-      // Se for o canal atual conectado, a outra lógica já lida com ele
-      if (currentVoiceChannel && chan.id === currentVoiceChannel.id) return
-
-      const room = supabase.channel(`voice:${chan.id}`)
-      room
-        .on('presence', { event: 'sync' }, () => {
-          const state = room.presenceState()
-          // Usa diretamente o username rastreado por cada usuário
-          const usersInRoom = (Object.values(state).flat() as any[])
-          setVoiceUsers(prev => ({ ...prev, [chan.id]: usersInRoom }))
+      if (data) {
+        const usersByChannel: Record<string, any[]> = {}
+        data.forEach((row: any) => {
+          if (!usersByChannel[row.channel_id]) {
+            usersByChannel[row.channel_id] = []
+          }
+          usersByChannel[row.channel_id].push({
+            user_id: row.user_id,
+            username: row.profiles?.username || 'Membro',
+            avatar_url: row.profiles?.avatar_url,
+            isMuted: false,
+            isSpeaking: false
+          })
         })
-        .subscribe()
-      
-      subs.push(room)
-    })
+        setVoiceUsers(usersByChannel)
+      }
+    }
+
+    fetchVoiceUsers()
+
+    const channelSub = supabase
+      .channel('realtime:voice_channel_users')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'voice_channel_users'
+        },
+        () => {
+          fetchVoiceUsers()
+        }
+      )
+      .subscribe()
 
     return () => {
-      subs.forEach(room => supabase.removeChannel(room))
+      supabase.removeChannel(channelSub)
     }
-  }, [channels, currentVoiceChannel])
+  }, [])
+
+  // Cleanup de voice_channel_users ao fechar/recarregar a aba ou desmontar
+  useEffect(() => {
+    const cleanUpVoice = () => {
+      if (user?.id) {
+        supabase.from('voice_channel_users').delete().eq('user_id', user.id).then()
+      }
+    }
+
+    window.addEventListener('beforeunload', cleanUpVoice)
+    return () => {
+      window.removeEventListener('beforeunload', cleanUpVoice)
+      cleanUpVoice()
+    }
+  }, [user?.id])
 
   // Fetch channels from database
   const fetchChannels = async (setInitialChannel = false) => {
@@ -573,10 +624,10 @@ export function Dashboard({ session }: DashboardProps) {
 
     const fetchMessages = async () => {
       if (!currentTextChannel) return
-      // Busca mensagens sem join com profiles — username vem do cache/presence
+      // Busca mensagens fazendo o JOIN com profiles para puxar username e avatar_url
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('id, content, created_at, user_id')
+        .select('id, content, channel_id, created_at, user_id, profiles(username, avatar_url)')
         .eq('channel_id', currentTextChannel.id)
         .order('created_at', { ascending: true })
 
@@ -604,10 +655,16 @@ export function Dashboard({ session }: DashboardProps) {
           filter: `channel_id=eq.${currentTextChannel?.id}`,
         },
         async (payload) => {
-          // Username vem do cache populado pelo presence — sem query extra
+          // Busca o profile correspondente no banco para garantir o username/avatar_url reais
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', payload.new.user_id)
+            .single()
+
           const newMessage = {
             ...payload.new,
-            profiles: { username: usernameCache[payload.new.user_id] || usernameCacheRef.current[payload.new.user_id] || 'Membro' }
+            profiles: profile || { username: 'Usuario', avatar_url: null }
           }
           setMessages((prev) => [...prev, newMessage])
         }
